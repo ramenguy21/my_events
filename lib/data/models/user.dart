@@ -7,8 +7,8 @@ class UserModel {
 
   factory UserModel.fromJson(Map<String, dynamic> json) {
     return UserModel(
-      id: json['id'],
-      email: json['email'],
+      id: int.tryParse(json['id'].toString()) ?? 0,
+      email: json['email'] ?? '',
       token: json['token'],
     );
   }

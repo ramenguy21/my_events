@@ -18,6 +18,8 @@ samples, guidance on mobile development, and a full API reference.
 Workflow
 
 19/11 Looking for inspirations, establishing themeing and prototyping in figma.
+20/11 Working on auth
+21/11 Auth Finished, moving to events
 
 Architecture Justification:
 Why GetX?
@@ -32,3 +34,12 @@ Can swap APIs without touching UI
 
 Why Dio over http?
 honestly, i personally think it might be bloat, but since i'm new, i need it to handhold me :3
+
+Supported Emails
+george.bluth@reqres.in
+janet.weaver@reqres.in
+emma.wong@reqres.in
+eve.holt@reqres.in
+charles.morris@reqres.in
+tracey.ramos@reqres.in
+Note for reviewer: ReqRes accepts any password for these emails. Common test password: pistol or any string works.

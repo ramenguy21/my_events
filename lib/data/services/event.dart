@@ -1,10 +1,13 @@
 import 'package:dio/dio.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 
-class ApiService {
+class EventsApiService {
   final Dio _dio;
-  static const String baseUrl = 'https://reqres.in/api';
+  static final String baseUrl =
+      dotenv.env['EVENTS_API_URL'] ??
+      'https://691f28b9bb52a1db22c0b383.mockapi.io';
 
-  ApiService()
+  EventsApiService()
     : _dio = Dio(
         BaseOptions(
           baseUrl: baseUrl,
@@ -26,20 +29,20 @@ class ApiService {
     );
   }
 
-  Future<Response> post(String endpoint, Map<String, dynamic> data) async {
-    try {
-      return await _dio.post(endpoint, data: data);
-    } on DioException catch (e) {
-      throw _handleError(e);
-    }
-  }
-
   Future<Response> get(
     String endpoint, {
     Map<String, dynamic>? queryParams,
   }) async {
     try {
       return await _dio.get(endpoint, queryParameters: queryParams);
+    } on DioException catch (e) {
+      throw _handleError(e);
+    }
+  }
+
+  Future<Response> post(String endpoint, Map<String, dynamic> data) async {
+    try {
+      return await _dio.post(endpoint, data: data);
     } on DioException catch (e) {
       throw _handleError(e);
     }

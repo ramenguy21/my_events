@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/constants/app_text_styles.dart';
-import '../controllers/auth_controller.dart';
+import '../controllers/auth.dart';
 
 class AuthScreen extends StatefulWidget {
   const AuthScreen({super.key});
@@ -184,6 +184,25 @@ class _AuthScreenState extends State<AuthScreen>
             ),
           ),
         ),
+        SizedBox(height: height * 0.02),
+
+        Obx(
+          () => _authController.errorMessage.value.isNotEmpty
+              ? Container(
+                  padding: EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: AppColors.error.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(
+                    _authController.errorMessage.value,
+                    style: AppTextStyles.caption.copyWith(
+                      color: AppColors.error,
+                    ),
+                  ),
+                )
+              : const SizedBox.shrink(),
+        ),
       ],
     );
   }
@@ -246,6 +265,25 @@ class _AuthScreenState extends State<AuthScreen>
                     ),
             ),
           ),
+        ),
+        SizedBox(height: height * 0.02),
+
+        Obx(
+          () => _authController.errorMessage.value.isNotEmpty
+              ? Container(
+                  padding: EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: AppColors.error.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(
+                    _authController.errorMessage.value,
+                    style: AppTextStyles.caption.copyWith(
+                      color: AppColors.error,
+                    ),
+                  ),
+                )
+              : const SizedBox.shrink(),
         ),
       ],
     );
