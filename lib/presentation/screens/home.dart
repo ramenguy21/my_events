@@ -123,13 +123,10 @@ class _HomeScreenState extends State<HomeScreen> {
               return EventCard(
                 event: event,
                 onTap: () {
-                  print('Event tapped: ${event.title}');
-                  print('Navigating to detail screen...');
                   try {
                     Get.to(() => EventDetailScreen(event: event));
-                    print('Navigation called');
                   } catch (e) {
-                    print('Navigation error: $e');
+                    Get.snackbar('Error', 'Could not open event details.');
                   }
                 },
                 onFavorite: () {

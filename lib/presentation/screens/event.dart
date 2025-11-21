@@ -3,11 +3,145 @@ import 'package:get/get.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/constants/app_text_styles.dart';
 import '../../data/models/event.dart';
+import '../../data/repositories/event.dart';
+import '../controllers/auth.dart';
+import '../controllers/event.dart';
 
-class EventDetailScreen extends StatelessWidget {
+class EventDetailScreen extends StatefulWidget {
   final EventModel event;
 
   const EventDetailScreen({super.key, required this.event});
+
+  @override
+  State<EventDetailScreen> createState() => _EventDetailScreenState();
+}
+
+class _EventDetailScreenState extends State<EventDetailScreen> {
+  bool isRegistering = false;
+  late EventModel currentEvent;
+
+  @override
+  void initState() {
+    super.initState();
+    currentEvent = widget.event;
+  }
+
+  Future<void> _registerForEvent() async {
+    setState(() => isRegistering = true);
+
+    // Optimistic update
+    final previousCount = currentEvent.attendeeCount;
+    setState(() {
+      currentEvent = currentEvent.copyWith(
+        attendeeCount: currentEvent.attendeeCount + 1,
+      );
+    });
+
+    try {
+      final repository = EventsRepository();
+      final authController = Get.find<AuthController>();
+      final userId = authController.currentUser.value?.id.toString() ?? '1';
+
+      await repository.registerForEvent(currentEvent.id, userId);
+
+      // Update in events list if controller exists
+      try {
+        final eventsController = Get.find<EventsController>();
+        final index = eventsController.events.indexWhere(
+          (e) => e.id == currentEvent.id,
+        );
+        if (index != -1) {
+          eventsController.events[index] = currentEvent;
+        }
+      } catch (e) {
+        // Controller not found, that's okay
+      }
+
+      // Show success dialog
+      if (mounted) {
+        _showSuccessDialog();
+      }
+    } catch (e) {
+      // Revert optimistic update on error
+      if (mounted) {
+        setState(() {
+          currentEvent = currentEvent.copyWith(attendeeCount: previousCount);
+        });
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to register: ${e.toString()}'),
+            backgroundColor: AppColors.error,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => isRegistering = false);
+      }
+    }
+  }
+
+  void _showSuccessDialog() {
+    final height = MediaQuery.of(context).size.height;
+    final width = MediaQuery.of(context).size.width;
+
+    showDialog(
+      context: context,
+      builder: (context) => Dialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        child: Padding(
+          padding: EdgeInsets.all(width * 0.06),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                padding: EdgeInsets.all(width * 0.04),
+                decoration: BoxDecoration(
+                  color: AppColors.success.withOpacity(0.1),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  Icons.check_circle,
+                  size: 60,
+                  color: AppColors.success,
+                ),
+              ),
+              SizedBox(height: height * 0.02),
+              Text('Registration Successful!', style: AppTextStyles.h2),
+              SizedBox(height: height * 0.01),
+              Text(
+                'You have successfully registered for ${currentEvent.title}',
+                style: AppTextStyles.caption,
+                textAlign: TextAlign.center,
+              ),
+              SizedBox(height: height * 0.03),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primary,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  child: Text(
+                    'Got it!',
+                    style: AppTextStyles.body.copyWith(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -30,7 +164,7 @@ class EventDetailScreen extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // Title
-            Text(event.title, style: AppTextStyles.h1),
+            Text(currentEvent.title, style: AppTextStyles.h1),
             SizedBox(height: height * 0.02),
 
             // Date & Time
@@ -43,7 +177,7 @@ class EventDetailScreen extends StatelessWidget {
                 ),
                 SizedBox(width: width * 0.03),
                 Text(
-                  '${event.getFormattedDate()} at ${event.getFormattedTime()}',
+                  '${currentEvent.getFormattedDate()} at ${currentEvent.getFormattedTime()}',
                   style: AppTextStyles.body,
                 ),
               ],
@@ -60,19 +194,19 @@ class EventDetailScreen extends StatelessWidget {
                 ),
                 SizedBox(width: width * 0.03),
                 Expanded(
-                  child: Text(event.location, style: AppTextStyles.body),
+                  child: Text(currentEvent.location, style: AppTextStyles.body),
                 ),
               ],
             ),
             SizedBox(height: height * 0.015),
 
-            // Attendees
+            // Attendees (with optimistic update)
             Row(
               children: [
                 const Icon(Icons.people, size: 20, color: AppColors.primary),
                 SizedBox(width: width * 0.03),
                 Text(
-                  '${event.attendeeCount} / ${event.attendeeLimit} registered',
+                  '${currentEvent.attendeeCount} / ${currentEvent.attendeeLimit} registered',
                   style: AppTextStyles.body,
                 ),
               ],
@@ -83,7 +217,7 @@ class EventDetailScreen extends StatelessWidget {
             Text('About Event', style: AppTextStyles.h2),
             SizedBox(height: height * 0.01),
             Text(
-              event.description,
+              currentEvent.description,
               style: AppTextStyles.body.copyWith(height: 1.5),
             ),
             SizedBox(height: height * 0.03),
@@ -100,14 +234,20 @@ class EventDetailScreen extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(event.organizerName, style: AppTextStyles.h3),
-                  if (event.organizerEmail.isNotEmpty) ...[
+                  Text(currentEvent.organizerName, style: AppTextStyles.h3),
+                  if (currentEvent.organizerEmail.isNotEmpty) ...[
                     SizedBox(height: height * 0.01),
-                    Text(event.organizerEmail, style: AppTextStyles.caption),
+                    Text(
+                      currentEvent.organizerEmail,
+                      style: AppTextStyles.caption,
+                    ),
                   ],
-                  if (event.organizerPhone.isNotEmpty) ...[
+                  if (currentEvent.organizerPhone.isNotEmpty) ...[
                     SizedBox(height: height * 0.008),
-                    Text(event.organizerPhone, style: AppTextStyles.caption),
+                    Text(
+                      currentEvent.organizerPhone,
+                      style: AppTextStyles.caption,
+                    ),
                   ],
                 ],
               ),
@@ -119,22 +259,25 @@ class EventDetailScreen extends StatelessWidget {
               width: double.infinity,
               height: height * 0.06,
               child: ElevatedButton(
-                onPressed: () {
-                  Get.snackbar('Success', 'Registered for ${event.title}');
-                },
+                onPressed: isRegistering ? null : _registerForEvent,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppColors.primary,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),
                   ),
                 ),
-                child: Text(
-                  'Register for Event',
-                  style: AppTextStyles.body.copyWith(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
+                child: isRegistering
+                    ? const CircularProgressIndicator(
+                        color: Colors.white,
+                        strokeWidth: 2,
+                      )
+                    : Text(
+                        'Register for Event',
+                        style: AppTextStyles.body.copyWith(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
               ),
             ),
           ],
